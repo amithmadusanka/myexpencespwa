@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Expense Tracker PWA</title>
-    <!-- Tailwind CSS for modern UI styling -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Library required to read text inside uploaded PDFs -->
+    <!-- PDF.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
@@ -17,24 +17,27 @@
         
         <!-- Tab Navigation -->
         <div class="flex border-b border-gray-200 mb-4">
-            <button onclick="switchTab('sms-tab')" id="smsBtn" class="w-1/2 py-2 text-center font-bold text-indigo-600 border-b-2 border-indigo-600 focus:outline-none">SMS Input</button>
-            <button onclick="switchTab('pdf-tab')" id="pdfBtn" class="w-1/2 py-2 text-center font-bold text-gray-500 focus:outline-none">Upload PDF Statement</button>
+            <button onclick="switchTab('sms-tab')" id="smsBtn" class="w-1/2 py-2 text-center font-bold text-indigo-600 border-b-2 border-indigo-600 focus:outline-none cursor-pointer">SMS Input</button>
+            <button onclick="switchTab('pdf-tab')" id="pdfBtn" class="w-1/2 py-2 text-center font-bold text-gray-500 focus:outline-none cursor-pointer">Upload PDF</button>
         </div>
 
         <!-- SMS Section -->
         <div id="sms-container" class="mb-6">
             <label class="block text-gray-600 text-sm font-semibold mb-2">Paste Bank SMS Here:</label>
             <textarea id="smsInput" rows="3" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., Paid LKR 1,500.00 at Keells..."></textarea>
-            <button onclick="processSMS()" class="w-full mt-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-indigo-700 transition">Analyze SMS</button>
+            <button onclick="processSMS()" class="w-full mt-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-indigo-700 transition cursor-pointer">Analyze SMS</button>
         </div>
 
-        <!-- PDF Section -->
+        <!-- PDF Section (Fixed Click Action Here) -->
         <div id="pdf-container" class="mb-6 hidden">
             <label class="block text-gray-600 text-sm font-semibold mb-2">Select Monthly Bank Statement (PDF):</label>
-            <div class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center bg-gray-50">
-                <input type="file" id="pdfFile" accept=".pdf" class="hidden" onchange="processPDF()">
-                <label for="pdfFile" class="cursor-pointer text-indigo-600 font-bold hover:underline">Click to upload PDF</label>
-                <p id="pdfStatus" class="text-xs text-gray-400 mt-1">Supports BOC, Sampath, HNB statement PDFs</p>
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:bg-gray-100 transition relative">
+                <!-- Hidden input overlay but clickable -->
+                <input type="file" id="pdfFile" accept=".pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="processPDF()">
+                <div class="pointer-events-none">
+                    <span class="text-indigo-600 font-bold underline">Click here to upload PDF</span>
+                    <p id="pdfStatus" class="text-xs text-gray-400 mt-2">Supports BOC, Sampath, HNB statement PDFs</p>
+                </div>
             </div>
         </div>
 
@@ -63,7 +66,7 @@
         <div>
             <div class="flex justify-between items-center mb-3">
                 <h4 class="text-gray-700 font-bold">Transaction History</h4>
-                <button onclick="clearAllData()" class="text-xs text-red-500 hover:underline">Clear All</button>
+                <button onclick="clearAllData()" class="text-xs text-red-500 hover:underline cursor-pointer">Clear All</button>
             </div>
             <div id="transactionList" class="space-y-2 max-h-60 overflow-y-auto">
                 <p class="text-gray-400 text-sm text-center py-4">No transactions added yet.</p>
@@ -76,7 +79,6 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
-        // Set up PDF.js Global Worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
     </script>
 </body>
