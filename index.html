@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Expense Tracker PWA</title>
+    <!-- Tailwind CSS for modern and clean UI styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+</head>
+<body class="bg-gray-100 font-sans p-4">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden p-6 mt-6">
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">💰 Bank SMS Expense Tracker</h2>
+        
+        <!-- SMS Input Section -->
+        <div class="mb-6">
+            <label class="block text-gray-600 text-sm font-semibold mb-2">Paste Bank SMS Here:</label>
+            <textarea id="smsInput" rows="3" class="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g., Paid LKR 1,500.00 at Keells..."></textarea>
+            <button onclick="processSMS()" class="w-full mt-2 bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl hover:bg-indigo-700 transition">Analyze SMS</button>
+        </div>
+
+        <hr class="border-gray-200 mb-6">
+
+        <!-- Summary Dashboard -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-red-50 p-4 rounded-xl text-center">
+                <span class="text-xs text-red-600 font-bold uppercase">Total Debits (Expenses)</span>
+                <h3 id="totalDebit" class="text-xl font-extrabold text-red-600 mt-1">LKR 0.00</h3>
+            </div>
+            <div class="bg-green-50 p-4 rounded-xl text-center">
+                <span class="text-xs text-green-600 font-bold uppercase">Total Credits (Income)</span>
+                <h3 id="totalCredit" class="text-xl font-extrabold text-green-600 mt-1">LKR 0.00</h3>
+            </div>
+        </div>
+
+        <!-- Transactions List -->
+        <div>
+            <h4 class="text-gray-700 font-bold mb-3">Recent Transactions</h4>
+            <div id="transactionList" class="space-y-2 max-h-60 overflow-y-auto">
+                <p class="text-gray-400 text-sm text-center py-4">No transactions added yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Register Service Worker for PWA Offline capabilities
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
