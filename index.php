@@ -8,127 +8,241 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Premium PDF Library Embedded Directly (No External Network Request Blocks) -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- Type system: Fraunces (display, does the "hand-lettered menu board" job) + Inter (UI/body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            /* ---- Token system: spice-market palette, not the default amber gradient ---- */
+            --clay: #FBF6EE;       /* base — unbleached rice paper */
+            --ink: #2A211B;        /* text — roasted espresso */
+            --paprika: #C1440E;    /* primary — dried chili / paprika */
+            --paprika-dark: #9B360A;
+            --turmeric: #D4A017;   /* accent — turmeric gold */
+            --curry-leaf: #45573E; /* secondary — curry leaf green */
+            --card: #FFFFFF;
+            --line: #EAE1D2;
+        }
+        * { font-family: 'Inter', sans-serif; }
+        .font-display { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
+        body { background: var(--clay); color: var(--ink); }
         .page { display: none; }
-        .page.active { display: block; }
-        /* Smooth Custom Scrollbar for products */
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .page.active { display: block; animation: riseIn .32s cubic-bezier(.16,1,.3,1); }
+        @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Scalloped edge under header — nods to the folded edge of a banana-leaf plate */
+        .scallop-edge {
+            height: 14px;
+            background: var(--clay);
+            -webkit-mask-image: radial-gradient(circle at 10px 0, transparent 9px, black 9.5px);
+            -webkit-mask-size: 20px 14px;
+            -webkit-mask-repeat: repeat-x;
+            mask-image: radial-gradient(circle at 10px 0, transparent 9px, black 9.5px);
+            mask-size: 20px 14px;
+            mask-repeat: repeat-x;
+            margin-top: -1px;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+
+        .nav-btn { position: relative; }
+        .nav-pill {
+            position: absolute; top: -6px; left: 50%; width: 32px; height: 3px;
+            background: var(--paprika); border-radius: 99px; transform: translateX(-50%) scaleX(0);
+            transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+        }
+        .nav-btn.active .nav-pill { transform: translateX(-50%) scaleX(1); }
+
+        .item-card { transition: border-color .15s ease, background .15s ease, transform .1s ease; }
+        .item-card.selected { border-color: var(--paprika); background: #FDF3ED; }
+        .item-card:active { transform: scale(.985); }
+
+        .check-dot {
+            width: 20px; height: 20px; border-radius: 999px; border: 2px solid #D8CBB8;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            transition: all .15s ease;
+        }
+        .item-card.selected .check-dot { background: var(--paprika); border-color: var(--paprika); }
+        .check-dot svg { opacity: 0; transform: scale(.5); transition: all .15s ease; }
+        .item-card.selected .check-dot svg { opacity: 1; transform: scale(1); }
+
+        .stepper-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+        /* Toast notifications — replaces alert()/confirm() */
+        #toast-stack { position: fixed; top: 14px; left: 0; right: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+        .toast {
+            pointer-events: auto; max-width: 340px; width: calc(100% - 32px);
+            background: var(--ink); color: #FBF6EE; font-size: 13px; font-weight: 600;
+            padding: 12px 16px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+            display: flex; align-items: center; gap: 8px;
+            animation: toastIn .25s cubic-bezier(.16,1,.3,1);
+        }
+        .toast.error { background: var(--paprika-dark); }
+        .toast.success { background: var(--curry-leaf); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-12px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* Confirm modal — replaces confirm() */
+        #confirm-backdrop { position: fixed; inset: 0; background: rgba(42,33,27,.45); backdrop-filter: blur(2px); z-index: 90; display: none; align-items: flex-end; justify-content: center; }
+        #confirm-backdrop.active { display: flex; }
+        #confirm-sheet { background: var(--card); width: 100%; max-width: 420px; border-radius: 20px 20px 0 0; padding: 22px 20px calc(22px + env(safe-area-inset-bottom)); animation: sheetUp .25s cubic-bezier(.16,1,.3,1); }
+        @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        input:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(193,68,14,.12); }
+        ::selection { background: rgba(193,68,14,.18); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased selection:bg-amber-500/20">
+<body class="antialiased">
 
-    <!-- Top Premium Header Bar -->
-    <header class="bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md sticky top-0 z-40 px-4 py-3.5 flex justify-between items-center rounded-b-2xl">
-        <div class="flex items-center space-x-2">
-            <span class="text-2xl">👨‍🍳</span>
-            <h1 id="app-header-title" class="text-lg font-bold tracking-wide">Catering Pro</h1>
+    <div id="toast-stack"></div>
+
+    <!-- Confirm Sheet (replaces window.confirm) -->
+    <div id="confirm-backdrop" onclick="if(event.target===this) closeConfirm(false)">
+        <div id="confirm-sheet">
+            <p id="confirm-message" class="text-sm font-semibold text-slate-800 mb-4"></p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirm(false)" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm">Cancel</button>
+                <button onclick="closeConfirm(true)" class="flex-1 py-3 rounded-xl text-white font-bold text-sm" style="background:var(--paprika)">Remove</button>
+            </div>
         </div>
-        <span class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-medium backdrop-blur-sm">Offline Mode</span>
+    </div>
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-40" style="background: linear-gradient(135deg, var(--paprika), var(--paprika-dark));">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2.5">
+                <span class="text-2xl leading-none">🍛</span>
+                <div>
+                    <h1 id="app-header-title" class="text-base font-bold text-white leading-tight font-display">Catering Pro</h1>
+                    <p class="text-[11px] text-white/70 font-medium leading-tight">Invoices &amp; quotes, offline</p>
+                </div>
+            </div>
+            <span class="bg-white/15 text-white text-[11px] px-2.5 py-1 rounded-full font-semibold backdrop-blur-sm">Offline</span>
+        </div>
+        <div class="scallop-edge"></div>
     </header>
 
-    <!-- Bottom Luxury Navigation Bar -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex justify-around py-3 px-2 rounded-t-2xl">
-        <button onclick="switchPage('invoice')" class="nav-btn flex flex-col items-center text-amber-600 group">
-            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">📄</span>
-            <span class="text-xs font-bold tracking-tight">Invoice</span>
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-6px_24px_rgba(0,0,0,0.06)] z-50 flex justify-around py-2.5 px-2" style="padding-bottom: calc(10px + env(safe-area-inset-bottom));">
+        <button onclick="switchPage('invoice', this)" class="nav-btn active flex flex-col items-center px-3 py-1" style="color: var(--paprika)">
+            <span class="nav-pill"></span>
+            <span class="text-xl mb-0.5">📄</span>
+            <span class="text-[11px] font-bold tracking-tight">Invoice</span>
         </button>
-        <button onclick="switchPage('quotation')" class="nav-btn flex flex-col items-center text-slate-400 group">
-            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">📋</span>
-            <span class="text-xs font-bold tracking-tight">Quotation</span>
+        <button onclick="switchPage('quotation', this)" class="nav-btn flex flex-col items-center px-3 py-1 text-slate-400">
+            <span class="nav-pill"></span>
+            <span class="text-xl mb-0.5">📋</span>
+            <span class="text-[11px] font-bold tracking-tight">Quotation</span>
         </button>
-        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center text-slate-400 group">
-            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">🍲</span>
-            <span class="text-xs font-bold tracking-tight">Products</span>
+        <button onclick="switchPage('products', this)" class="nav-btn flex flex-col items-center px-3 py-1 text-slate-400">
+            <span class="nav-pill"></span>
+            <span class="text-xl mb-0.5">🍲</span>
+            <span class="text-[11px] font-bold tracking-tight">Products</span>
         </button>
-        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center text-slate-400 group">
-            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">⚙️</span>
-            <span class="text-xs font-bold tracking-tight">Settings</span>
+        <button onclick="switchPage('settings', this)" class="nav-btn flex flex-col items-center px-3 py-1 text-slate-400">
+            <span class="nav-pill"></span>
+            <span class="text-xl mb-0.5">⚙️</span>
+            <span class="text-[11px] font-bold tracking-tight">Settings</span>
         </button>
     </nav>
 
-    <!-- Main Container Layout -->
-    <main class="p-4 mb-24 max-w-md mx-auto">
+    <!-- Main Container -->
+    <main class="p-4 mb-28 max-w-md mx-auto">
 
         <!-- ================= INVOICE PAGE ================= -->
-        <div id="invoice" class="page active animate-fadeIn">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-black text-slate-900">Create Invoice</h2>
-                <span class="text-xs text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">Step 1 of 2</span>
+        <div id="invoice" class="page active">
+            <div class="flex justify-between items-baseline mb-4 mt-1">
+                <h2 class="text-2xl font-display font-semibold text-slate-900">Create Invoice</h2>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded" style="color:var(--paprika); background:#FDF0E8">Final bill</span>
             </div>
-            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_16px_rgba(42,33,27,0.05)] border border-slate-100 mb-4 space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Customer Details</label>
-                    <input id="inv-customer" type="text" placeholder="Enter Customer Name" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Customer name</label>
+                    <input id="inv-customer" type="text" placeholder="e.g. Perera Wedding" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-transparent focus:bg-white rounded-xl outline-none transition text-sm font-medium">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Catering Items</label>
-                    <div id="inv-product-list" class="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scroll"></div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Menu items</label>
+                    <div id="inv-product-list" class="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scroll"></div>
                 </div>
-                <button onclick="generateOfflinePDF('Invoice')" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3.5 rounded-xl shadow-md shadow-amber-500/20 active:scale-[0.99] transition duration-150 text-sm flex justify-center items-center space-x-2">
-                    <span>Download Invoice PDF</span>
+                <div id="inv-total-row" class="hidden flex justify-between items-center pt-3 border-t border-dashed border-slate-200">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Running total</span>
+                    <span id="inv-total" class="text-lg font-bold font-display" style="color:var(--paprika)">LKR 0.00</span>
+                </div>
+                <button onclick="generateOfflinePDF('Invoice')" class="w-full text-white font-bold py-3.5 rounded-xl shadow-md active:scale-[0.99] transition duration-150 text-sm flex justify-center items-center space-x-2" style="background: linear-gradient(135deg, var(--paprika), var(--paprika-dark)); box-shadow: 0 8px 20px -6px rgba(193,68,14,.5)">
+                    <span>Download invoice PDF</span>
                 </button>
             </div>
         </div>
 
         <!-- ================= QUOTATION PAGE ================= -->
         <div id="quotation" class="page">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-black text-slate-900">Create Quotation</h2>
-                <span class="text-xs text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">Estimate Only</span>
+            <div class="flex justify-between items-baseline mb-4 mt-1">
+                <h2 class="text-2xl font-display font-semibold text-slate-900">Create Quotation</h2>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded" style="color:var(--curry-leaf); background:#EEF2EA">Estimate only</span>
             </div>
-            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-4">
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_16px_rgba(42,33,27,0.05)] border border-slate-100 mb-4 space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Prospective Client</label>
-                    <input id="q-customer" type="text" placeholder="Enter Client Name" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Prospective client</label>
+                    <input id="q-customer" type="text" placeholder="e.g. Fernando Birthday" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-transparent focus:bg-white rounded-xl outline-none transition text-sm font-medium">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Items</label>
-                    <div id="q-product-list" class="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scroll"></div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Menu items</label>
+                    <div id="q-product-list" class="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scroll"></div>
                 </div>
-                <button onclick="generateOfflinePDF('Quotation')" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3.5 rounded-xl shadow-md shadow-amber-500/20 active:scale-[0.99] transition duration-150 text-sm">
-                    Download Quotation PDF
+                <div id="q-total-row" class="hidden flex justify-between items-center pt-3 border-t border-dashed border-slate-200">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Running total</span>
+                    <span id="q-total" class="text-lg font-bold font-display" style="color:var(--curry-leaf)">LKR 0.00</span>
+                </div>
+                <button onclick="generateOfflinePDF('Quotation')" class="w-full text-white font-bold py-3.5 rounded-xl shadow-md active:scale-[0.99] transition duration-150 text-sm" style="background: linear-gradient(135deg, var(--curry-leaf), #34412E); box-shadow: 0 8px 20px -6px rgba(69,87,62,.5)">
+                    Download quotation PDF
                 </button>
             </div>
         </div>
 
         <!-- ================= PRODUCTS PAGE ================= -->
         <div id="products" class="page">
-            <h2 class="text-xl font-black text-slate-900 mb-4">Food Item Database</h2>
-            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-3.5">
-                <input id="p-name" type="text" placeholder="Item Name (e.g., Chicken Buriyani)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
-                <input id="p-price" type="number" placeholder="Price Per Plate / Unit (LKR)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
-                <button onclick="addProduct()" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-slate-800 transition text-sm">Save Menu Item</button>
+            <h2 class="text-2xl font-display font-semibold text-slate-900 mb-4 mt-1">Food Item Database</h2>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_16px_rgba(42,33,27,0.05)] border border-slate-100 mb-4 space-y-3">
+                <input id="p-name" type="text" placeholder="Item name (e.g., Chicken Buriyani)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-transparent focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                <input id="p-price" type="number" placeholder="Price per plate / unit (LKR)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-transparent focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                <button onclick="addProduct()" class="w-full text-white font-bold py-3 rounded-xl shadow-sm transition text-sm" style="background: var(--ink)">Save menu item</button>
             </div>
-            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100">
-                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-3">Saved Menu Matrix</h3>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_16px_rgba(42,33,27,0.05)] border border-slate-100">
+                <h3 class="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">Saved menu</h3>
                 <div id="saved-products" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <!-- ================= SETTINGS PAGE ================= -->
         <div id="settings" class="page">
-            <h2 class="text-xl font-black text-slate-900 mb-4">Business Profile Settings</h2>
-            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4">
+            <h2 class="text-2xl font-display font-semibold text-slate-900 mb-4 mt-1">Business Profile</h2>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_16px_rgba(42,33,27,0.05)] border border-slate-100 space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Company / Catering Name</label>
-                    <input id="cfg-name" type="text" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Company / catering name</label>
+                    <input id="cfg-name" type="text" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Contact Metadata (Invoice Header)</label>
-                    <textarea id="cfg-details" rows="3" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium" placeholder="Phone Lines, Address details..."></textarea>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Contact details (invoice header)</label>
+                    <textarea id="cfg-details" rows="3" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium focus:border-transparent" placeholder="Phone lines, address..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Official Brand Logo / Photo</label>
-                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 cursor-pointer hover:bg-slate-100/50 transition">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Brand logo</label>
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-5 cursor-pointer transition" style="border-color:#E4D6C2; background:#FDFAF4" onmouseover="this.style.background='#FBF3E6'" onmouseout="this.style.background='#FDFAF4'">
                         <span class="text-2xl mb-1">📸</span>
-                        <span class="text-xs font-semibold text-slate-500">Upload Base64 Logo</span>
+                        <span class="text-xs font-semibold text-slate-500">Tap to upload logo</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">PNG with transparent background looks best</span>
                         <input id="cfg-logo" type="file" accept="image/*" onchange="handleLogo(this)" class="hidden">
                     </label>
-                    <img id="logo-preview" class="h-20 mx-auto mt-4 object-contain rounded-lg border border-slate-100 p-1 hidden bg-white shadow-inner">
+                    <div id="logo-preview-wrap" class="hidden mt-4 flex items-center gap-3">
+                        <div class="h-20 w-20 rounded-lg border border-slate-100 p-1 flex items-center justify-center" style="background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); background-size:10px 10px; background-position:0 0,0 5px,5px -5px,-5px 0;">
+                            <img id="logo-preview" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <button onclick="removeLogo()" class="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg">Remove</button>
+                    </div>
                 </div>
-                <button onclick="saveSettings()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition text-sm">Apply Profile Changes</button>
+                <button onclick="saveSettings()" class="w-full text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm" style="background: var(--curry-leaf)">Save profile changes</button>
             </div>
         </div>
     </main>
@@ -136,18 +250,45 @@
     <script>
         let db = { products: [], settings: { name: 'Amma\'s Catering Service', details: 'Tel: 077 123 4567\nColombo, Sri Lanka', logo: '' } };
 
+        // ---------- Toasts (replaces alert) ----------
+        function showToast(message, type = 'default') {
+            const stack = document.getElementById('toast-stack');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.textContent = message;
+            stack.appendChild(el);
+            setTimeout(() => {
+                el.style.transition = 'opacity .2s ease, transform .2s ease';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-8px)';
+                setTimeout(() => el.remove(), 200);
+            }, 2400);
+        }
+
+        // ---------- Confirm sheet (replaces confirm) ----------
+        let _confirmResolve = null;
+        function askConfirm(message) {
+            document.getElementById('confirm-message').textContent = message;
+            document.getElementById('confirm-backdrop').classList.add('active');
+            return new Promise(resolve => { _confirmResolve = resolve; });
+        }
+        function closeConfirm(result) {
+            document.getElementById('confirm-backdrop').classList.remove('active');
+            if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+        }
+
         function loadData() {
             const data = localStorage.getItem('catering_pwa_db');
             if(data) db = JSON.parse(data);
             document.getElementById('app-header-title').innerText = db.settings.name || 'Catering Pro';
             renderProducts();
             renderSelectionLists();
-            
+
             document.getElementById('cfg-name').value = db.settings.name;
             document.getElementById('cfg-details').value = db.settings.details;
             if(db.settings.logo) {
                 document.getElementById('logo-preview').src = db.settings.logo;
-                document.getElementById('logo-preview').classList.remove('hidden');
+                document.getElementById('logo-preview-wrap').classList.remove('hidden');
             }
         }
 
@@ -158,123 +299,177 @@
             renderSelectionLists();
         }
 
-        function switchPage(pageId) {
+        function switchPage(pageId, btn) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-amber-600', 'text-slate-400'));
-            event.currentTarget.classList.replace('text-slate-400', 'text-amber-600');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.color = '';
+            });
+            btn.classList.add('active');
+            btn.style.color = 'var(--paprika)';
         }
 
         function addProduct() {
-            const name = document.getElementById('p-name').value;
-            const price = parseFloat(document.getElementById('p-price').value);
-            if(!name || !price) return alert('Fill all product fields');
+            const nameInput = document.getElementById('p-name');
+            const priceInput = document.getElementById('p-price');
+            const name = nameInput.value.trim();
+            const price = parseFloat(priceInput.value);
+            if(!name || !price) { showToast('Enter an item name and a price', 'error'); return; }
             db.products.push({ id: Date.now(), name, price });
-            document.getElementById('p-name').value = '';
-            document.getElementById('p-price').value = '';
+            nameInput.value = '';
+            priceInput.value = '';
             saveData();
+            showToast(`${name} added to menu`, 'success');
         }
 
-        function deleteProduct(id) {
-            if(confirm('Remove this food item?')) {
+        async function deleteProduct(id) {
+            const product = db.products.find(p => p.id === id);
+            const ok = await askConfirm(`Remove "${product?.name}" from your menu?`);
+            if (ok) {
                 db.products = db.products.filter(p => p.id !== id);
                 saveData();
+                showToast('Item removed', 'default');
             }
         }
 
         function renderProducts() {
             const container = document.getElementById('saved-products');
             if(db.products.length === 0) {
-                container.innerHTML = `<p class="text-slate-400 text-xs py-4 text-center font-medium">Your menu list is currently empty.</p>`;
+                container.innerHTML = `<div class="text-center py-6"><p class="text-2xl mb-1">🍽️</p><p class="text-slate-400 text-xs font-medium">Your menu is empty — add your first item above.</p></div>`;
                 return;
             }
             container.innerHTML = db.products.map(p => `
                 <div class="flex justify-between items-center py-3">
                     <div>
                         <p class="font-semibold text-sm text-slate-800">${p.name}</p>
-                        <p class="text-xs text-amber-600 font-bold">LKR ${p.price.toFixed(2)}</p>
+                        <p class="text-xs font-bold" style="color:var(--paprika)">LKR ${p.price.toFixed(2)}</p>
                     </div>
-                    <button onclick="deleteProduct(${p.id})" class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 px-2.5 py-1.5 rounded-lg transition">Remove</button>
+                    <button onclick="deleteProduct(${p.id})" class="text-red-500 font-bold text-xs bg-red-50 px-2.5 py-1.5 rounded-lg transition active:scale-95">Remove</button>
                 </div>
             `).join('');
         }
 
         function handleLogo(input) {
+            const file = input.files[0];
+            if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 db.settings.logo = e.target.result;
                 document.getElementById('logo-preview').src = e.target.result;
-                document.getElementById('logo-preview').classList.remove('hidden');
+                document.getElementById('logo-preview-wrap').classList.remove('hidden');
+                saveData();
+                showToast('Logo updated', 'success');
             };
-            if(input.files[0]) reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(file);
+        }
+
+        function removeLogo() {
+            db.settings.logo = '';
+            document.getElementById('logo-preview-wrap').classList.add('hidden');
+            document.getElementById('cfg-logo').value = '';
+            saveData();
         }
 
         function saveSettings() {
             db.settings.name = document.getElementById('cfg-name').value;
             db.settings.details = document.getElementById('cfg-details').value;
             saveData();
-            alert('Local configuration saved successfully!');
+            showToast('Business profile saved', 'success');
+        }
+
+        function checkIcon() {
+            return `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         }
 
         function renderSelectionLists() {
             const generateHTML = () => {
-                if(db.products.length === 0) return `<p class="text-slate-400 text-xs py-3 text-center font-medium">Add items in Products screen first.</p>`;
+                if(db.products.length === 0) return `<div class="text-center py-6"><p class="text-slate-400 text-xs font-medium">Add items in the Products tab first.</p></div>`;
                 return db.products.map(p => `
-                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-amber-200 transition">
-                        <label class="flex items-center space-x-3 flex-1 cursor-pointer">
-                            <input type="checkbox" class="prod-chk w-4 h-4 rounded text-amber-600 accent-amber-500 focus:ring-amber-500" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
+                    <div class="item-card flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer" data-id="${p.id}" onclick="toggleItem(this)">
+                        <div class="flex items-center space-x-3 flex-1">
+                            <div class="check-dot">${checkIcon()}</div>
                             <div class="flex flex-col">
                                 <span class="text-xs font-bold text-slate-700">${p.name}</span>
-                                <span class="text-[11px] text-slate-400 font-medium">LKR ${p.price}</span>
+                                <span class="text-[11px] text-slate-400 font-medium">LKR ${p.price.toFixed(2)}</span>
                             </div>
-                        </label>
-                        <input type="number" value="1" min="1" class="prod-qty w-14 p-1 text-xs border border-slate-200 bg-white rounded-lg text-center font-bold outline-none focus:border-amber-500" style="display:none">
+                        </div>
+                        <div class="qty-stepper hidden flex items-center gap-1.5" onclick="event.stopPropagation()">
+                            <button type="button" class="stepper-btn bg-white border border-slate-200 rounded-lg text-slate-500" onclick="stepQty(this, -1)">−</button>
+                            <span class="prod-qty w-6 text-center text-xs font-bold" data-qty="1">1</span>
+                            <button type="button" class="stepper-btn bg-white border border-slate-200 rounded-lg text-slate-500" onclick="stepQty(this, 1)">+</button>
+                        </div>
                     </div>
                 `).join('');
             };
 
             document.getElementById('inv-product-list').innerHTML = generateHTML();
             document.getElementById('q-product-list').innerHTML = generateHTML();
-
-            document.querySelectorAll('.prod-chk').forEach(chk => {
-                chk.addEventListener('change', (e) => {
-                    const qtyInput = e.target.closest('div').querySelector('.prod-qty');
-                    qtyInput.style.display = e.target.checked ? 'block' : 'none';
-                });
-            });
         }
 
-        // 🌟 100% OFFLINE PDF GENERATION LOGIC WITH THE EMBEDDED PDF-LIB
-        async function generateOfflinePDF(type) {
-            const customer = document.getElementById(type === 'Invoice' ? 'inv-customer' : 'q-customer').value;
-            if(!customer) return alert('Please enter Customer Name');
+        function toggleItem(card) {
+            card.classList.toggle('selected');
+            card.querySelector('.qty-stepper').classList.toggle('hidden');
+            updateTotals();
+        }
 
-            const container = document.getElementById(type === 'Invoice' ? 'inv-product-list' : 'q-product-list');
-            const checkedItems = container.querySelectorAll('.prod-chk:checked');
-            if(checkedItems.length === 0) return alert('Select at least one product');
+        function stepQty(btn, delta) {
+            const span = btn.parentElement.querySelector('.prod-qty');
+            let val = parseInt(span.dataset.qty) + delta;
+            if (val < 1) val = 1;
+            span.dataset.qty = val;
+            span.textContent = val;
+            updateTotals();
+        }
+
+        function computeTotal(containerId) {
+            const container = document.getElementById(containerId);
+            let total = 0, count = 0;
+            container.querySelectorAll('.item-card.selected').forEach(card => {
+                const id = parseInt(card.dataset.id);
+                const product = db.products.find(p => p.id === id);
+                const qty = parseInt(card.querySelector('.prod-qty').dataset.qty);
+                if (product) { total += product.price * qty; count++; }
+            });
+            return { total, count };
+        }
+
+        function updateTotals() {
+            const inv = computeTotal('inv-product-list');
+            document.getElementById('inv-total-row').classList.toggle('hidden', inv.count === 0);
+            document.getElementById('inv-total').textContent = `LKR ${inv.total.toFixed(2)}`;
+
+            const q = computeTotal('q-product-list');
+            document.getElementById('q-total-row').classList.toggle('hidden', q.count === 0);
+            document.getElementById('q-total').textContent = `LKR ${q.total.toFixed(2)}`;
+        }
+
+        // 100% OFFLINE PDF GENERATION LOGIC WITH THE EMBEDDED PDF-LIB
+        async function generateOfflinePDF(type) {
+            const customer = document.getElementById(type === 'Invoice' ? 'inv-customer' : 'q-customer').value.trim();
+            if(!customer) { showToast('Please enter a customer name', 'error'); return; }
+
+            const containerId = type === 'Invoice' ? 'inv-product-list' : 'q-product-list';
+            const container = document.getElementById(containerId);
+            const selectedCards = container.querySelectorAll('.item-card.selected');
+            if(selectedCards.length === 0) { showToast('Select at least one item', 'error'); return; }
 
             try {
-                // Initialize modern PDF Document 
                 const pdfDoc = await PDFLib.PDFDocument.create();
-                const page = pdfDoc.addPage([595.28, 841.89]); // Standard A4 Dimensions
+                const page = pdfDoc.addPage([595.28, 841.89]); // A4
                 const { width, height } = page.getSize();
-                
-                // Embedded Core Standard Font
+
                 const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
                 const helveticaBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
                 let yPosition = height - 50;
+                const brandColor = type === 'Invoice' ? PDFLib.rgb(0.757, 0.267, 0.055) : PDFLib.rgb(0.271, 0.341, 0.243);
 
-                // Draw Branding Header bar
-                page.drawRectangle({ x: 0, y: yPosition - 40, width: width, height: 60, color: PDFLib.rgb(0.85, 0.47, 0.02) });
-                
-                // Company Name & Header details
+                page.drawRectangle({ x: 0, y: yPosition - 40, width: width, height: 60, color: brandColor });
                 page.drawText(db.settings.name.substring(0, 35), { x: 30, y: yPosition, size: 22, font: helveticaBold, color: PDFLib.rgb(1, 1, 1) });
-                
-                // Reset y position for metadata block
+
                 yPosition -= 70;
-                
-                // Render Brand Logo if available locally 
+
                 if (db.settings.logo) {
                     try {
                         const imgBytes = await fetch(db.settings.logo).then(res => res.arrayBuffer());
@@ -288,22 +483,19 @@
                     } catch(e) { console.log("Image embed skipped"); }
                 }
 
-                // Render Business Details
                 const lines = db.settings.details.split('\n');
                 lines.forEach((line, index) => {
                     page.drawText(line, { x: 30, y: yPosition - (index * 14), size: 10, font: helveticaFont, color: PDFLib.rgb(0.3, 0.3, 0.3) });
                 });
 
                 yPosition -= 50;
-                
-                // Metadata Titles
+
                 page.drawText(type.toUpperCase(), { x: 30, y: yPosition, size: 16, font: helveticaBold, color: PDFLib.rgb(0.1, 0.1, 0.1) });
                 page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: width - 150, y: yPosition, size: 10, font: helveticaFont });
-                
+
                 yPosition -= 20;
                 page.drawText(`Billed To: ${customer}`, { x: 30, y: yPosition, size: 12, font: helveticaBold });
 
-                // Table Headers
                 yPosition -= 35;
                 page.drawRectangle({ x: 30, y: yPosition - 5, width: width - 60, height: 20, color: PDFLib.rgb(0.95, 0.95, 0.95) });
                 page.drawText('Description', { x: 35, y: yPosition, size: 10, font: helveticaBold });
@@ -314,29 +506,25 @@
                 let grandTotal = 0;
                 yPosition -= 10;
 
-                // Append Checklist items rows dynamically
-                checkedItems.forEach(chk => {
+                selectedCards.forEach(card => {
                     yPosition -= 22;
-                    const name = chk.dataset.name;
-                    const price = parseFloat(chk.dataset.price);
-                    const qty = parseInt(chk.closest('div').querySelector('.prod-qty').value) || 1;
-                    const subtotal = price * qty;
+                    const id = parseInt(card.dataset.id);
+                    const product = db.products.find(p => p.id === id);
+                    const qty = parseInt(card.querySelector('.prod-qty').dataset.qty) || 1;
+                    const subtotal = product.price * qty;
                     grandTotal += subtotal;
 
-                    page.drawText(name.substring(0, 45), { x: 35, y: yPosition, size: 10, font: helveticaFont });
+                    page.drawText(product.name.substring(0, 45), { x: 35, y: yPosition, size: 10, font: helveticaFont });
                     page.drawText(qty.toString(), { x: 325, y: yPosition, size: 10, font: helveticaFont });
-                    page.drawText(price.toFixed(2), { x: 400, y: yPosition, size: 10, font: helveticaFont });
+                    page.drawText(product.price.toFixed(2), { x: 400, y: yPosition, size: 10, font: helveticaFont });
                     page.drawText(subtotal.toFixed(2), { x: 500, y: yPosition, size: 10, font: helveticaFont });
-                    
-                    // Simple underline break element
+
                     page.drawLine({ start: { x: 30, y: yPosition - 4 }, end: { x: width - 30, y: yPosition - 4 }, strokeWidth: 0.5, color: PDFLib.rgb(0.9, 0.9, 0.9) });
                 });
 
-                // Total Summary Display block
                 yPosition -= 30;
-                page.drawText(`Grand Total: LKR ${grandTotal.toFixed(2)}`, { x: width - 230, y: yPosition, size: 14, font: helveticaBold, color: PDFLib.rgb(0.85, 0.47, 0.02) });
+                page.drawText(`Grand Total: LKR ${grandTotal.toFixed(2)}`, { x: width - 230, y: yPosition, size: 14, font: helveticaBold, color: brandColor });
 
-                // Process byte stream and enforce auto download block
                 const pdfBytes = await pdfDoc.save();
                 const blob = new Blob([pdfBytes], { type: "application/pdf" });
                 const link = document.createElement('a');
@@ -345,10 +533,11 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                showToast(`${type} downloaded`, 'success');
 
             } catch (err) {
                 console.error(err);
-                alert('Error creating document bundle');
+                showToast('Error creating PDF — please try again', 'error');
             }
         }
 
