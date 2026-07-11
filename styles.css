@@ -1,0 +1,24 @@
+/* Custom Design Token System */
+:root {
+    --clay: #FBF6EE;       
+    --ink: #2A211B;        
+    --paprika: #C1440E;    
+    --paprika-dark: #9B360A;
+    --turmeric: #D4A017;   
+    --curry-leaf: #45573E; 
+}
+
+.font-serif {
+    font-family: 'Fraunces', serif;
+}
+
+.font-sans {
+    font-family: 'Inter', sans-serif;
+}
+
+.text-ink { color: var(--ink); }
+.bg-paprika { background-color: var(--paprika); }
+.bg-paprika\:hover:hover { background-color: var(--paprika-dark); }
+.text-paprika { color: var(--paprika); }
+.border-paprika { border-color: var(--paprika); }
+.bg-curry { background-color: var(--curry-leaf); }
