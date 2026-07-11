@@ -3,126 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catering Manager PWA</title>
+    <title>Catering Manager Pro</title>
+    <!-- Tailwind CSS (Modern Theme v4) -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Premium PDF Library Embedded Directly (No External Network Request Blocks) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <style>
         .page { display: none; }
         .page.active { display: block; }
-        
-        /* Print Styles: Isolates the PDF layout when printing/saving */
-        @media print {
-            body * { display: none !important; }
-            #pdf-template, #pdf-template * { display: block !important; }
-            #pdf-template { position: absolute; left: 0; top: 0; width: 100%; }
-            .no-print { display: none !important; }
-        }
+        /* Smooth Custom Scrollbar for products */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-800">
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-amber-500/20">
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 flex justify-around p-2 no-print">
-        <button onclick="switchPage('invoice')" class="flex flex-col items-center text-amber-600 focus:outline-none">
-            <span class="text-xl">📄</span><span class="text-xs font-semibold">Invoice</span>
+    <!-- Top Premium Header Bar -->
+    <header class="bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md sticky top-0 z-40 px-4 py-3.5 flex justify-between items-center rounded-b-2xl">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl">👨‍🍳</span>
+            <h1 id="app-header-title" class="text-lg font-bold tracking-wide">Catering Pro</h1>
+        </div>
+        <span class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-medium backdrop-blur-sm">Offline Mode</span>
+    </header>
+
+    <!-- Bottom Luxury Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex justify-around py-3 px-2 rounded-t-2xl">
+        <button onclick="switchPage('invoice')" class="nav-btn flex flex-col items-center text-amber-600 group">
+            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">📄</span>
+            <span class="text-xs font-bold tracking-tight">Invoice</span>
         </button>
-        <button onclick="switchPage('quotation')" class="flex flex-col items-center text-slate-500 focus:outline-none">
-            <span class="text-xl">📋</span><span class="text-xs font-semibold">Quotation</span>
+        <button onclick="switchPage('quotation')" class="nav-btn flex flex-col items-center text-slate-400 group">
+            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">📋</span>
+            <span class="text-xs font-bold tracking-tight">Quotation</span>
         </button>
-        <button onclick="switchPage('products')" class="flex flex-col items-center text-slate-500 focus:outline-none">
-            <span class="text-xl">🍲</span><span class="text-xs font-semibold">Products</span>
+        <button onclick="switchPage('products')" class="nav-btn flex flex-col items-center text-slate-400 group">
+            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">🍲</span>
+            <span class="text-xs font-bold tracking-tight">Products</span>
         </button>
-        <button onclick="switchPage('settings')" class="flex flex-col items-center text-slate-500 focus:outline-none">
-            <span class="text-xl">⚙️</span><span class="text-xs font-semibold">Settings</span>
+        <button onclick="switchPage('settings')" class="nav-btn flex flex-col items-center text-slate-400 group">
+            <span class="text-xl mb-0.5 transition-transform group-hover:scale-110">⚙️</span>
+            <span class="text-xs font-bold tracking-tight">Settings</span>
         </button>
     </nav>
 
-    <main class="p-4 mb-20 max-w-md mx-auto no-print">
+    <!-- Main Container Layout -->
+    <main class="p-4 mb-24 max-w-md mx-auto">
 
-        <div id="invoice" class="page active">
-            <h2 class="text-2xl font-bold text-amber-600 mb-4">New Invoice</h2>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
-                <input id="inv-customer" type="text" placeholder="Customer Name" class="w-full p-2 border border-slate-200 rounded-lg mb-2">
-                <h3 class="font-semibold text-sm text-slate-500 mb-2">Select Products:</h3>
-                <div id="inv-product-list" class="space-y-2 max-h-40 overflow-y-auto mb-2 border-b border-slate-100 pb-2"></div>
-                <button onclick="generatePrintPDF('Invoice')" class="w-full bg-amber-500 text-white font-bold py-2.5 rounded-lg shadow-md hover:bg-amber-600 transition">Save / Print Invoice</button>
+        <!-- ================= INVOICE PAGE ================= -->
+        <div id="invoice" class="page active animate-fadeIn">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-slate-900">Create Invoice</h2>
+                <span class="text-xs text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">Step 1 of 2</span>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Customer Details</label>
+                    <input id="inv-customer" type="text" placeholder="Enter Customer Name" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Catering Items</label>
+                    <div id="inv-product-list" class="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scroll"></div>
+                </div>
+                <button onclick="generateOfflinePDF('Invoice')" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3.5 rounded-xl shadow-md shadow-amber-500/20 active:scale-[0.99] transition duration-150 text-sm flex justify-center items-center space-x-2">
+                    <span>Download Invoice PDF</span>
+                </button>
             </div>
         </div>
 
+        <!-- ================= QUOTATION PAGE ================= -->
         <div id="quotation" class="page">
-            <h2 class="text-2xl font-bold text-amber-600 mb-4">New Quotation</h2>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
-                <input id="q-customer" type="text" placeholder="Customer Name" class="w-full p-2 border border-slate-200 rounded-lg mb-2">
-                <h3 class="font-semibold text-sm text-slate-500 mb-2">Select Products:</h3>
-                <div id="q-product-list" class="space-y-2 max-h-40 overflow-y-auto mb-2 border-b border-slate-100 pb-2"></div>
-                <button onclick="generatePrintPDF('Quotation')" class="w-full bg-amber-500 text-white font-bold py-2.5 rounded-lg shadow-md hover:bg-amber-600 transition">Save / Print Quotation</button>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-black text-slate-900">Create Quotation</h2>
+                <span class="text-xs text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">Estimate Only</span>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Prospective Client</label>
+                    <input id="q-customer" type="text" placeholder="Enter Client Name" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Items</label>
+                    <div id="q-product-list" class="space-y-2.5 max-h-56 overflow-y-auto pr-1 custom-scroll"></div>
+                </div>
+                <button onclick="generateOfflinePDF('Quotation')" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-3.5 rounded-xl shadow-md shadow-amber-500/20 active:scale-[0.99] transition duration-150 text-sm">
+                    Download Quotation PDF
+                </button>
             </div>
         </div>
 
+        <!-- ================= PRODUCTS PAGE ================= -->
         <div id="products" class="page">
-            <h2 class="text-2xl font-bold text-amber-600 mb-4">Product Management</h2>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-4">
-                <input id="p-name" type="text" placeholder="Item Name (e.g. Fried Rice)" class="w-full p-2 border border-slate-200 rounded-lg mb-2">
-                <input id="p-price" type="number" placeholder="Price (LKR)" class="w-full p-2 border border-slate-200 rounded-lg mb-3">
-                <button onclick="addProduct()" class="w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Add Product</button>
+            <h2 class="text-xl font-black text-slate-900 mb-4">Food Item Database</h2>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 mb-4 space-y-3.5">
+                <input id="p-name" type="text" placeholder="Item Name (e.g., Chicken Buriyani)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                <input id="p-price" type="number" placeholder="Price Per Plate / Unit (LKR)" class="w-full p-3 bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white rounded-xl outline-none transition text-sm font-medium">
+                <button onclick="addProduct()" class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-slate-800 transition text-sm">Save Menu Item</button>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                <h3 class="font-bold mb-2">Saved Products</h3>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100">
+                <h3 class="font-bold text-sm text-slate-400 uppercase tracking-wider mb-3">Saved Menu Matrix</h3>
                 <div id="saved-products" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
+        <!-- ================= SETTINGS PAGE ================= -->
         <div id="settings" class="page">
-            <h2 class="text-2xl font-bold text-amber-600 mb-4">Settings</h2>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                <label class="block text-sm font-semibold mb-1">Company Name</label>
-                <input id="cfg-name" type="text" class="w-full p-2 border border-slate-200 rounded-lg mb-3">
-                
-                <label class="block text-sm font-semibold mb-1">Contact Details</label>
-                <textarea id="cfg-details" class="w-full p-2 border border-slate-200 rounded-lg mb-3" placeholder="Phone, Address, Email etc."></textarea>
-                
-                <label class="block text-sm font-semibold mb-1">Logo / Business Image</label>
-                <input id="cfg-logo" type="file" accept="image/*" onchange="handleLogo(this)" class="w-full text-sm mb-4">
-                <img id="logo-preview" class="h-20 object-contain mb-4 hidden">
-
-                <button onclick="saveSettings()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg">Save Settings</button>
+            <h2 class="text-xl font-black text-slate-900 mb-4">Business Profile Settings</h2>
+            <div class="bg-white p-5 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] border border-slate-100 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Company / Catering Name</label>
+                    <input id="cfg-name" type="text" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Contact Metadata (Invoice Header)</label>
+                    <textarea id="cfg-details" rows="3" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium" placeholder="Phone Lines, Address details..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">Official Brand Logo / Photo</label>
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 cursor-pointer hover:bg-slate-100/50 transition">
+                        <span class="text-2xl mb-1">📸</span>
+                        <span class="text-xs font-semibold text-slate-500">Upload Base64 Logo</span>
+                        <input id="cfg-logo" type="file" accept="image/*" onchange="handleLogo(this)" class="hidden">
+                    </label>
+                    <img id="logo-preview" class="h-20 mx-auto mt-4 object-contain rounded-lg border border-slate-100 p-1 hidden bg-white shadow-inner">
+                </div>
+                <button onclick="saveSettings()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md shadow-emerald-600/10 hover:bg-emerald-700 transition text-sm">Apply Profile Changes</button>
             </div>
         </div>
     </main>
 
-    <div id="pdf-template" class="hidden p-6 bg-white text-slate-800">
-        <div style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #d97706; padding-bottom: 10px; margin-bottom: 20px;">
-            <div>
-                <h1 id="pdf-com-name" style="font-size: 24px; font-weight: bold; color: #d97706;">Company Name</h1>
-                <p id="pdf-com-details" style="font-size: 13px; color: #64748b; white-space: pre-line;">Details</p>
-            </div>
-            <img id="pdf-logo" style="height: 60px; object-fit: contain;" class="hidden">
-        </div>
-        <div style="margin-bottom: 20px;">
-            <h2 id="pdf-title" style="font-size: 18px; font-weight: bold; text-transform: uppercase;">INVOICE</h2>
-            <p style="font-size: 14px;"><strong>To:</strong> <span id="pdf-customer">Customer Name</span></p>
-            <p style="font-size: 14px;"><strong>Date:</strong> <span id="pdf-date">Date</span></p>
-        </div>
-        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; font-size: 14px;">
-            <thead>
-                <tr style="background-color: #f1f5f9; text-align: left;">
-                    <th style="padding: 8px; border: 1px solid #cbd5e1;">Item Description</th>
-                    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">Qty</th>
-                    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: right;">Price</th>
-                    <th style="padding: 8px; border: 1px solid #cbd5e1; text-align: right;">Total</th>
-                </tr>
-            </thead>
-            <tbody id="pdf-items"></tbody>
-        </table>
-        <div style="text-align: right; font-size: 16px; font-weight: bold;">
-            Total Amount: LKR <span id="pdf-total">0.00</span>
-        </div>
-    </div>
-
     <script>
-        let db = { products: [], settings: { name: 'My Catering Business', details: '', logo: '' } };
+        let db = { products: [], settings: { name: 'Amma\'s Catering Service', details: 'Tel: 077 123 4567\nColombo, Sri Lanka', logo: '' } };
 
         function loadData() {
             const data = localStorage.getItem('catering_pwa_db');
             if(data) db = JSON.parse(data);
+            document.getElementById('app-header-title').innerText = db.settings.name || 'Catering Pro';
             renderProducts();
             renderSelectionLists();
             
@@ -136,6 +153,7 @@
 
         function saveData() {
             localStorage.setItem('catering_pwa_db', JSON.stringify(db));
+            document.getElementById('app-header-title').innerText = db.settings.name || 'Catering Pro';
             renderProducts();
             renderSelectionLists();
         }
@@ -143,14 +161,14 @@
         function switchPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
-            document.querySelectorAll('nav button').forEach(b => b.classList.replace('text-amber-600', 'text-slate-500'));
-            event.currentTarget.classList.replace('text-slate-500', 'text-amber-600');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-amber-600', 'text-slate-400'));
+            event.currentTarget.classList.replace('text-slate-400', 'text-amber-600');
         }
 
         function addProduct() {
             const name = document.getElementById('p-name').value;
             const price = parseFloat(document.getElementById('p-price').value);
-            if(!name || !price) return alert('Please enter both name and price');
+            if(!name || !price) return alert('Fill all product fields');
             db.products.push({ id: Date.now(), name, price });
             document.getElementById('p-name').value = '';
             document.getElementById('p-price').value = '';
@@ -158,7 +176,7 @@
         }
 
         function deleteProduct(id) {
-            if(confirm('Are you sure you want to delete this item?')) {
+            if(confirm('Remove this food item?')) {
                 db.products = db.products.filter(p => p.id !== id);
                 saveData();
             }
@@ -167,16 +185,16 @@
         function renderProducts() {
             const container = document.getElementById('saved-products');
             if(db.products.length === 0) {
-                container.innerHTML = `<p class="text-slate-400 text-sm py-2">No products added yet.</p>`;
+                container.innerHTML = `<p class="text-slate-400 text-xs py-4 text-center font-medium">Your menu list is currently empty.</p>`;
                 return;
             }
             container.innerHTML = db.products.map(p => `
-                <div class="flex justify-between items-center py-2">
+                <div class="flex justify-between items-center py-3">
                     <div>
-                        <p class="font-medium">${p.name}</p>
-                        <p class="text-xs text-slate-500">LKR ${p.price.toFixed(2)}</p>
+                        <p class="font-semibold text-sm text-slate-800">${p.name}</p>
+                        <p class="text-xs text-amber-600 font-bold">LKR ${p.price.toFixed(2)}</p>
                     </div>
-                    <button onclick="deleteProduct(${p.id})" class="text-red-500 text-sm font-medium">Delete</button>
+                    <button onclick="deleteProduct(${p.id})" class="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 px-2.5 py-1.5 rounded-lg transition">Remove</button>
                 </div>
             `).join('');
         }
@@ -195,19 +213,22 @@
             db.settings.name = document.getElementById('cfg-name').value;
             db.settings.details = document.getElementById('cfg-details').value;
             saveData();
-            alert('Settings saved successfully!');
+            alert('Local configuration saved successfully!');
         }
 
         function renderSelectionLists() {
             const generateHTML = () => {
-                if(db.products.length === 0) return `<p class="text-slate-400 text-xs py-1">Please add items in the Products tab first.</p>`;
+                if(db.products.length === 0) return `<p class="text-slate-400 text-xs py-3 text-center font-medium">Add items in Products screen first.</p>`;
                 return db.products.map(p => `
-                    <div class="flex items-center justify-between text-sm">
-                        <label class="flex items-center space-x-2 py-1 flex-1">
-                            <input type="checkbox" class="prod-chk accent-amber-500" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
-                            <span>${p.name} (<span class="text-slate-500">LKR ${p.price}</span>)</span>
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-amber-200 transition">
+                        <label class="flex items-center space-x-3 flex-1 cursor-pointer">
+                            <input type="checkbox" class="prod-chk w-4 h-4 rounded text-amber-600 accent-amber-500 focus:ring-amber-500" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-700">${p.name}</span>
+                                <span class="text-[11px] text-slate-400 font-medium">LKR ${p.price}</span>
+                            </div>
                         </label>
-                        <input type="number" value="1" min="1" class="prod-qty w-12 p-0.5 border border-slate-200 rounded text-center font-semibold" style="display:none">
+                        <input type="number" value="1" min="1" class="prod-qty w-14 p-1 text-xs border border-slate-200 bg-white rounded-lg text-center font-bold outline-none focus:border-amber-500" style="display:none">
                     </div>
                 `).join('');
             };
@@ -223,54 +244,112 @@
             });
         }
 
-        function generatePrintPDF(type) {
+        // 🌟 100% OFFLINE PDF GENERATION LOGIC WITH THE EMBEDDED PDF-LIB
+        async function generateOfflinePDF(type) {
             const customer = document.getElementById(type === 'Invoice' ? 'inv-customer' : 'q-customer').value;
             if(!customer) return alert('Please enter Customer Name');
 
             const container = document.getElementById(type === 'Invoice' ? 'inv-product-list' : 'q-product-list');
             const checkedItems = container.querySelectorAll('.prod-chk:checked');
-            if(checkedItems.length === 0) return alert('Please check at least one product');
+            if(checkedItems.length === 0) return alert('Select at least one product');
 
-            document.getElementById('pdf-com-name').innerText = db.settings.name;
-            document.getElementById('pdf-com-details').innerText = db.settings.details;
-            
-            if(db.settings.logo) {
-                document.getElementById('pdf-logo').src = db.settings.logo;
-                document.getElementById('pdf-logo').classList.remove('hidden');
-            } else {
-                document.getElementById('pdf-logo').classList.add('hidden');
+            try {
+                // Initialize modern PDF Document 
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                const page = pdfDoc.addPage([595.28, 841.89]); // Standard A4 Dimensions
+                const { width, height } = page.getSize();
+                
+                // Embedded Core Standard Font
+                const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+                const helveticaBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+
+                let yPosition = height - 50;
+
+                // Draw Branding Header bar
+                page.drawRectangle({ x: 0, y: yPosition - 40, width: width, height: 60, color: PDFLib.rgb(0.85, 0.47, 0.02) });
+                
+                // Company Name & Header details
+                page.drawText(db.settings.name.substring(0, 35), { x: 30, y: yPosition, size: 22, font: helveticaBold, color: PDFLib.rgb(1, 1, 1) });
+                
+                // Reset y position for metadata block
+                yPosition -= 70;
+                
+                // Render Brand Logo if available locally 
+                if (db.settings.logo) {
+                    try {
+                        const imgBytes = await fetch(db.settings.logo).then(res => res.arrayBuffer());
+                        let embeddedImage;
+                        if (db.settings.logo.includes('png')) {
+                            embeddedImage = await pdfDoc.embedPng(imgBytes);
+                        } else {
+                            embeddedImage = await pdfDoc.embedJpg(imgBytes);
+                        }
+                        page.drawImage(embeddedImage, { x: width - 110, y: yPosition, width: 80, height: 60 });
+                    } catch(e) { console.log("Image embed skipped"); }
+                }
+
+                // Render Business Details
+                const lines = db.settings.details.split('\n');
+                lines.forEach((line, index) => {
+                    page.drawText(line, { x: 30, y: yPosition - (index * 14), size: 10, font: helveticaFont, color: PDFLib.rgb(0.3, 0.3, 0.3) });
+                });
+
+                yPosition -= 50;
+                
+                // Metadata Titles
+                page.drawText(type.toUpperCase(), { x: 30, y: yPosition, size: 16, font: helveticaBold, color: PDFLib.rgb(0.1, 0.1, 0.1) });
+                page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: width - 150, y: yPosition, size: 10, font: helveticaFont });
+                
+                yPosition -= 20;
+                page.drawText(`Billed To: ${customer}`, { x: 30, y: yPosition, size: 12, font: helveticaBold });
+
+                // Table Headers
+                yPosition -= 35;
+                page.drawRectangle({ x: 30, y: yPosition - 5, width: width - 60, height: 20, color: PDFLib.rgb(0.95, 0.95, 0.95) });
+                page.drawText('Description', { x: 35, y: yPosition, size: 10, font: helveticaBold });
+                page.drawText('Qty', { x: 320, y: yPosition, size: 10, font: helveticaBold });
+                page.drawText('Unit Price', { x: 400, y: yPosition, size: 10, font: helveticaBold });
+                page.drawText('Total (LKR)', { x: 500, y: yPosition, size: 10, font: helveticaBold });
+
+                let grandTotal = 0;
+                yPosition -= 10;
+
+                // Append Checklist items rows dynamically
+                checkedItems.forEach(chk => {
+                    yPosition -= 22;
+                    const name = chk.dataset.name;
+                    const price = parseFloat(chk.dataset.price);
+                    const qty = parseInt(chk.closest('div').querySelector('.prod-qty').value) || 1;
+                    const subtotal = price * qty;
+                    grandTotal += subtotal;
+
+                    page.drawText(name.substring(0, 45), { x: 35, y: yPosition, size: 10, font: helveticaFont });
+                    page.drawText(qty.toString(), { x: 325, y: yPosition, size: 10, font: helveticaFont });
+                    page.drawText(price.toFixed(2), { x: 400, y: yPosition, size: 10, font: helveticaFont });
+                    page.drawText(subtotal.toFixed(2), { x: 500, y: yPosition, size: 10, font: helveticaFont });
+                    
+                    // Simple underline break element
+                    page.drawLine({ start: { x: 30, y: yPosition - 4 }, end: { x: width - 30, y: yPosition - 4 }, strokeWidth: 0.5, color: PDFLib.rgb(0.9, 0.9, 0.9) });
+                });
+
+                // Total Summary Display block
+                yPosition -= 30;
+                page.drawText(`Grand Total: LKR ${grandTotal.toFixed(2)}`, { x: width - 230, y: yPosition, size: 14, font: helveticaBold, color: PDFLib.rgb(0.85, 0.47, 0.02) });
+
+                // Process byte stream and enforce auto download block
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: "application/pdf" });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${type}_${customer.replace(/\s+/g, '_')}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (err) {
+                console.error(err);
+                alert('Error creating document bundle');
             }
-
-            document.getElementById('pdf-title').innerText = type;
-            document.getElementById('pdf-customer').innerText = customer;
-            document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
-
-            let total = 0;
-            let rowsHtml = '';
-            checkedItems.forEach(chk => {
-                const name = chk.dataset.name;
-                const price = parseFloat(chk.dataset.price);
-                const qty = parseInt(chk.closest('div').querySelector('.prod-qty').value) || 1;
-                const subtotal = price * qty;
-                total += subtotal;
-
-                rowsHtml += `
-                    <tr>
-                        <td style="padding: 8px; border: 1px solid #cbd5e1;">${name}</td>
-                        <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: center;">${qty}</td>
-                        <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right;">${price.toFixed(2)}</td>
-                        <td style="padding: 8px; border: 1px solid #cbd5e1; text-align: right;">${subtotal.toFixed(2)}</td>
-                    </tr>
-                `;
-            });
-
-            document.getElementById('pdf-items').innerHTML = rowsHtml;
-            document.getElementById('pdf-total').innerText = total.toFixed(2);
-
-            // Execute Native Print
-            document.getElementById('pdf-template').classList.remove('hidden');
-            window.print();
-            document.getElementById('pdf-template').classList.add('hidden');
         }
 
         window.onload = loadData;
