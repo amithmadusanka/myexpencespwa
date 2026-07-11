@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catering Manager Pro</title>
+    <title>Rasa — Catering Manager</title>
     <!-- Tailwind CSS (Modern Theme v4) -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Premium PDF Library Embedded Directly (No External Network Request Blocks) -->
@@ -27,9 +27,19 @@
         * { font-family: 'Inter', sans-serif; }
         .font-display { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
         body { background: var(--clay); color: var(--ink); }
-        .page { display: none; }
-        .page.active { display: block; animation: riseIn .32s cubic-bezier(.16,1,.3,1); }
-        @keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Pages stack in the same grid cell so the container height always matches
+           whichever page is on top — no manual height math needed. Motion always
+           sweeps right-to-left, like a clock hand that only ever moves forward. */
+        #page-stage { display: grid; overflow: hidden; }
+        #page-stage > .page {
+            grid-area: 1 / 1;
+            transform: translateX(110%);
+            z-index: 1;
+            transition: transform .42s cubic-bezier(.65,0,.35,1);
+        }
+        #page-stage > .page.active-page { transform: translateX(0); z-index: 2; }
+        #page-stage > .page.off-left { transform: translateX(-110%); z-index: 1; }
+        #page-stage > .page.no-transition { transition: none !important; }
 
         /* Scalloped edge under header — nods to the folded edge of a banana-leaf plate */
         .scallop-edge {
@@ -113,9 +123,13 @@
     <header class="sticky top-0 z-40" style="background: linear-gradient(135deg, var(--paprika), var(--paprika-dark));">
         <div class="px-4 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-2.5">
-                <span class="text-2xl leading-none">🍛</span>
+                <div class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img id="header-logo" class="hidden w-full h-full object-contain p-1">
+                    <span id="header-emoji" class="text-xl leading-none">🍛</span>
+                </div>
                 <div>
-                    <h1 id="app-header-title" class="text-base font-bold text-white leading-tight font-display">Catering Pro</h1>
+                    <p class="text-[9px] font-bold tracking-[0.2em] text-white/55 uppercase leading-none mb-0.5">Rasa</p>
+                    <h1 id="app-header-title" class="text-base font-bold text-white leading-tight font-display">Your Catering Business</h1>
                     <p class="text-[11px] text-white/70 font-medium leading-tight">Invoices &amp; quotes, offline</p>
                 </div>
             </div>
@@ -150,9 +164,10 @@
 
     <!-- Main Container -->
     <main class="p-4 mb-28 max-w-md mx-auto">
+      <div id="page-stage">
 
         <!-- ================= INVOICE PAGE ================= -->
-        <div id="invoice" class="page active">
+        <div id="invoice" class="page active-page">
             <div class="flex justify-between items-baseline mb-4 mt-1">
                 <h2 class="text-2xl font-display font-semibold text-slate-900">Create Invoice</h2>
                 <span class="text-[11px] font-bold px-2 py-0.5 rounded" style="color:var(--paprika); background:#FDF0E8">Final bill</span>
@@ -245,6 +260,7 @@
                 <button onclick="saveSettings()" class="w-full text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm" style="background: var(--curry-leaf)">Save profile changes</button>
             </div>
         </div>
+      </div>
         <p class="text-center text-[11px] font-semibold text-slate-300 tracking-wide mt-2 mb-1">Software by MDR</p>
     </main>
 
@@ -281,7 +297,8 @@
         function loadData() {
             const data = localStorage.getItem('catering_pwa_db');
             if(data) db = JSON.parse(data);
-            document.getElementById('app-header-title').innerText = db.settings.name || 'Catering Pro';
+            document.getElementById('app-header-title').innerText = db.settings.name || 'Your Catering Business';
+            updateHeaderLogo();
             renderProducts();
             renderSelectionLists();
 
@@ -295,20 +312,52 @@
 
         function saveData() {
             localStorage.setItem('catering_pwa_db', JSON.stringify(db));
-            document.getElementById('app-header-title').innerText = db.settings.name || 'Catering Pro';
+            document.getElementById('app-header-title').innerText = db.settings.name || 'Your Catering Business';
+            updateHeaderLogo();
             renderProducts();
             renderSelectionLists();
         }
 
+        let activePageId = 'invoice';
         function switchPage(pageId, btn) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
+            if (pageId !== activePageId) {
+                const oldEl = document.getElementById(activePageId);
+                const newEl = document.getElementById(pageId);
+
+                // Snap the incoming page to the right instantly (no transition), so
+                // every switch enters from the same side — motion only ever goes forward.
+                newEl.classList.add('no-transition');
+                newEl.classList.remove('active-page', 'off-left');
+                void newEl.offsetWidth;
+                newEl.classList.remove('no-transition');
+
+                requestAnimationFrame(() => {
+                    oldEl.classList.remove('active-page');
+                    oldEl.classList.add('off-left');
+                    newEl.classList.add('active-page');
+                });
+
+                activePageId = pageId;
+            }
             document.querySelectorAll('.nav-btn').forEach(b => {
                 b.classList.remove('active');
                 b.style.color = '';
             });
             btn.classList.add('active');
             btn.style.color = 'var(--paprika)';
+        }
+
+        function updateHeaderLogo() {
+            const img = document.getElementById('header-logo');
+            const emoji = document.getElementById('header-emoji');
+            if (db.settings.logo) {
+                img.src = db.settings.logo;
+                img.classList.remove('hidden');
+                emoji.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                emoji.classList.remove('hidden');
+            }
         }
 
         function addProduct() {
@@ -445,6 +494,17 @@
             document.getElementById('q-total').textContent = `LKR ${q.total.toFixed(2)}`;
         }
 
+        // Decode a data: URL straight to bytes — avoids fetch() on data: URLs,
+        // which some sandboxed webviews block silently and was why the logo
+        // wasn't making it into the PDF.
+        function dataUrlToBytes(dataUrl) {
+            const base64 = dataUrl.split(',')[1];
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return bytes;
+        }
+
         // 100% OFFLINE PDF GENERATION LOGIC WITH THE EMBEDDED PDF-LIB
         async function generateOfflinePDF(type) {
             const customer = document.getElementById(type === 'Invoice' ? 'inv-customer' : 'q-customer').value.trim();
@@ -478,7 +538,7 @@
                 // ---- Centered logo ----
                 if (db.settings.logo) {
                     try {
-                        const imgBytes = await fetch(db.settings.logo).then(res => res.arrayBuffer());
+                        const imgBytes = dataUrlToBytes(db.settings.logo);
                         let embeddedImage;
                         if (db.settings.logo.includes('png')) {
                             embeddedImage = await pdfDoc.embedPng(imgBytes);
@@ -491,7 +551,7 @@
                         const drawH = embeddedImage.height * scale;
                         page.drawImage(embeddedImage, { x: (width - drawW) / 2, y: yPosition - drawH, width: drawW, height: drawH });
                         yPosition -= (drawH + 14);
-                    } catch(e) { console.log("Image embed skipped"); }
+                    } catch(e) { console.log("Image embed skipped", e); showToast('Logo could not be added to the PDF', 'error'); }
                 }
 
                 // ---- Centered company name ----
