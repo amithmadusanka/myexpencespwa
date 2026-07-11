@@ -245,6 +245,7 @@
                 <button onclick="saveSettings()" class="w-full text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm" style="background: var(--curry-leaf)">Save profile changes</button>
             </div>
         </div>
+        <p class="text-center text-[11px] font-semibold text-slate-300 tracking-wide mt-2 mb-1">Software by MDR</p>
     </main>
 
     <script>
@@ -462,14 +463,19 @@
                 const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
                 const helveticaBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
-                let yPosition = height - 50;
+                const margin = 40;
                 const brandColor = type === 'Invoice' ? PDFLib.rgb(0.757, 0.267, 0.055) : PDFLib.rgb(0.271, 0.341, 0.243);
+                const inkColor = PDFLib.rgb(0.16, 0.13, 0.11);
+                const grayColor = PDFLib.rgb(0.42, 0.42, 0.42);
 
-                page.drawRectangle({ x: 0, y: yPosition - 40, width: width, height: 60, color: brandColor });
-                page.drawText(db.settings.name.substring(0, 35), { x: 30, y: yPosition, size: 22, font: helveticaBold, color: PDFLib.rgb(1, 1, 1) });
+                const centerText = (text, y, font, size, color) => {
+                    const textWidth = font.widthOfTextAtSize(text, size);
+                    page.drawText(text, { x: (width - textWidth) / 2, y, size, font, color });
+                };
 
-                yPosition -= 70;
+                let yPosition = height - 55;
 
+                // ---- Centered logo ----
                 if (db.settings.logo) {
                     try {
                         const imgBytes = await fetch(db.settings.logo).then(res => res.arrayBuffer());
@@ -479,34 +485,57 @@
                         } else {
                             embeddedImage = await pdfDoc.embedJpg(imgBytes);
                         }
-                        page.drawImage(embeddedImage, { x: width - 110, y: yPosition, width: 80, height: 60 });
+                        const maxDim = 64;
+                        const scale = Math.min(maxDim / embeddedImage.width, maxDim / embeddedImage.height, 1) || 1;
+                        const drawW = embeddedImage.width * scale;
+                        const drawH = embeddedImage.height * scale;
+                        page.drawImage(embeddedImage, { x: (width - drawW) / 2, y: yPosition - drawH, width: drawW, height: drawH });
+                        yPosition -= (drawH + 14);
                     } catch(e) { console.log("Image embed skipped"); }
                 }
 
-                const lines = db.settings.details.split('\n');
-                lines.forEach((line, index) => {
-                    page.drawText(line, { x: 30, y: yPosition - (index * 14), size: 10, font: helveticaFont, color: PDFLib.rgb(0.3, 0.3, 0.3) });
+                // ---- Centered company name ----
+                centerText(db.settings.name, yPosition, helveticaBold, 17, inkColor);
+                yPosition -= 16;
+
+                // ---- Centered address / contact details ----
+                db.settings.details.split('\n').forEach(line => {
+                    if (!line.trim()) return;
+                    centerText(line.trim(), yPosition, helveticaFont, 9.5, grayColor);
+                    yPosition -= 13;
                 });
 
-                yPosition -= 50;
+                yPosition -= 10;
+                page.drawLine({ start: { x: margin, y: yPosition }, end: { x: width - margin, y: yPosition }, strokeWidth: 1, color: brandColor });
+                yPosition -= 32;
 
-                page.drawText(type.toUpperCase(), { x: 30, y: yPosition, size: 16, font: helveticaBold, color: PDFLib.rgb(0.1, 0.1, 0.1) });
-                page.drawText(`Date: ${new Date().toLocaleDateString()}`, { x: width - 150, y: yPosition, size: 10, font: helveticaFont });
+                // ---- Document title + meta (standard invoice header row) ----
+                const docNumber = `${type === 'Invoice' ? 'INV' : 'QUO'}-${new Date().getFullYear()}${String(Date.now()).slice(-5)}`;
+                page.drawText(type.toUpperCase(), { x: margin, y: yPosition, size: 20, font: helveticaBold, color: inkColor });
+                const metaLabel = (label, value, rowY) => {
+                    page.drawText(label, { x: width - margin - 150, y: rowY, size: 9, font: helveticaFont, color: grayColor });
+                    page.drawText(value, { x: width - margin - 80, y: rowY, size: 9, font: helveticaBold, color: inkColor });
+                };
+                metaLabel('No:', docNumber, yPosition + 5);
+                metaLabel('Date:', new Date().toLocaleDateString(), yPosition - 9);
 
-                yPosition -= 20;
-                page.drawText(`Billed To: ${customer}`, { x: 30, y: yPosition, size: 12, font: helveticaBold });
+                yPosition -= 30;
+                page.drawText('BILLED TO', { x: margin, y: yPosition, size: 8.5, font: helveticaBold, color: grayColor });
+                yPosition -= 16;
+                page.drawText(customer, { x: margin, y: yPosition, size: 13, font: helveticaBold, color: inkColor });
 
-                yPosition -= 35;
-                page.drawRectangle({ x: 30, y: yPosition - 5, width: width - 60, height: 20, color: PDFLib.rgb(0.95, 0.95, 0.95) });
-                page.drawText('Description', { x: 35, y: yPosition, size: 10, font: helveticaBold });
-                page.drawText('Qty', { x: 320, y: yPosition, size: 10, font: helveticaBold });
-                page.drawText('Unit Price', { x: 400, y: yPosition, size: 10, font: helveticaBold });
-                page.drawText('Total (LKR)', { x: 500, y: yPosition, size: 10, font: helveticaBold });
+                // ---- Table ----
+                yPosition -= 28;
+                page.drawRectangle({ x: margin, y: yPosition - 6, width: width - margin * 2, height: 22, color: brandColor });
+                page.drawText('Description', { x: margin + 8, y: yPosition, size: 9.5, font: helveticaBold, color: PDFLib.rgb(1,1,1) });
+                page.drawText('Qty', { x: 320, y: yPosition, size: 9.5, font: helveticaBold, color: PDFLib.rgb(1,1,1) });
+                page.drawText('Unit Price', { x: 400, y: yPosition, size: 9.5, font: helveticaBold, color: PDFLib.rgb(1,1,1) });
+                page.drawText('Total (LKR)', { x: width - margin - 85, y: yPosition, size: 9.5, font: helveticaBold, color: PDFLib.rgb(1,1,1) });
 
                 let grandTotal = 0;
-                yPosition -= 10;
+                yPosition -= 12;
 
-                selectedCards.forEach(card => {
+                selectedCards.forEach((card, i) => {
                     yPosition -= 22;
                     const id = parseInt(card.dataset.id);
                     const product = db.products.find(p => p.id === id);
@@ -514,16 +543,26 @@
                     const subtotal = product.price * qty;
                     grandTotal += subtotal;
 
-                    page.drawText(product.name.substring(0, 45), { x: 35, y: yPosition, size: 10, font: helveticaFont });
-                    page.drawText(qty.toString(), { x: 325, y: yPosition, size: 10, font: helveticaFont });
-                    page.drawText(product.price.toFixed(2), { x: 400, y: yPosition, size: 10, font: helveticaFont });
-                    page.drawText(subtotal.toFixed(2), { x: 500, y: yPosition, size: 10, font: helveticaFont });
-
-                    page.drawLine({ start: { x: 30, y: yPosition - 4 }, end: { x: width - 30, y: yPosition - 4 }, strokeWidth: 0.5, color: PDFLib.rgb(0.9, 0.9, 0.9) });
+                    if (i % 2 === 1) {
+                        page.drawRectangle({ x: margin, y: yPosition - 6, width: width - margin * 2, height: 20, color: PDFLib.rgb(0.97, 0.97, 0.96) });
+                    }
+                    page.drawText(product.name.substring(0, 45), { x: margin + 8, y: yPosition, size: 10, font: helveticaFont, color: inkColor });
+                    page.drawText(qty.toString(), { x: 325, y: yPosition, size: 10, font: helveticaFont, color: inkColor });
+                    page.drawText(product.price.toFixed(2), { x: 400, y: yPosition, size: 10, font: helveticaFont, color: inkColor });
+                    page.drawText(subtotal.toFixed(2), { x: width - margin - 85, y: yPosition, size: 10, font: helveticaFont, color: inkColor });
                 });
 
+                yPosition -= 14;
+                page.drawLine({ start: { x: margin, y: yPosition }, end: { x: width - margin, y: yPosition }, strokeWidth: 1, color: PDFLib.rgb(0.85, 0.85, 0.83) });
+
+                // ---- Grand total ----
                 yPosition -= 30;
-                page.drawText(`Grand Total: LKR ${grandTotal.toFixed(2)}`, { x: width - 230, y: yPosition, size: 14, font: helveticaBold, color: brandColor });
+                page.drawText('Grand Total', { x: width - margin - 180, y: yPosition, size: 12, font: helveticaBold, color: grayColor });
+                page.drawText(`LKR ${grandTotal.toFixed(2)}`, { x: width - margin - 85, y: yPosition, size: 14, font: helveticaBold, color: brandColor });
+
+                // ---- Footer: Software by MDR ----
+                page.drawLine({ start: { x: margin, y: 42 }, end: { x: width - margin, y: 42 }, strokeWidth: 0.5, color: PDFLib.rgb(0.88, 0.88, 0.86) });
+                centerText('Software by MDR', 26, helveticaFont, 8, PDFLib.rgb(0.6, 0.6, 0.58));
 
                 const pdfBytes = await pdfDoc.save();
                 const blob = new Blob([pdfBytes], { type: "application/pdf" });
